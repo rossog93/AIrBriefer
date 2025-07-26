@@ -1,0 +1,23 @@
+#Virtual Enviroment
+venv/
+.venv/
+
+#PyCharm Files
+.idea/
+
+#Python Files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+#Data files
+data/audio/*
+data/transcriptions/*
+data/summaries/*
+!data/audio/.gitkeep
+!data/transcriptions/.gitkeep
+!data/summaries/.gitkeep
+
+#logs
+*.log
