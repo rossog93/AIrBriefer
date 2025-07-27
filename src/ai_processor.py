@@ -16,8 +16,9 @@ class AITranscriber:
         logging.info(f"Loading Whisper model: {model_name}")
         self.model = whisper.load_model(model_name)
 
-    def reduce_noise(self, input_path, plt=True):
+    def reduce_noise(self, input_path, plt=True, low_pass_freq=500, high_pass_freq=2500):
         logger.info(f"Reducing noise for audio: {input_path}")
+
         audio = AudioSegment.from_file(input_path)
         samples = np.array(audio.get_array_of_samples())
 
@@ -30,8 +31,8 @@ class AITranscriber:
             channels=audio.channels)
 
         # Step 2: Filtering (band-pass)
-        logger.info("Applying band-pass filter (50–2500 Hz).")
-        filtered_audio = clean_audio.high_pass_filter(50).low_pass_filter(2500)
+        logger.info(f"Applying band-pass filter ({low_pass_freq}–{high_pass_freq} Hz).")
+        filtered_audio = clean_audio.high_pass_filter(low_pass_freq).low_pass_filter(high_pass_freq)
         filtered_samples = np.array(filtered_audio.get_array_of_samples())
 
         # Step 3: Normalization
@@ -109,8 +110,8 @@ class AITranscriber:
             axs[i + 12].set_ylabel("Count")
 
         plt.tight_layout()
-        os.makedirs("test/plots", exist_ok=True)
-        plot_file = os.path.join("test/plots", "data_full_pipeline.png")
+
+        plot_file = os.path.join("test", "data_full_pipeline.png")
         plt.savefig(plot_file)
         plt.close()
         logger.info(f"Saved plot to {plot_file}")
@@ -123,8 +124,8 @@ class AITranscriber:
             if reduce_noise:
                 logging.info("Noise reduction enabled, processing clean audio.")
                 self.reduce_noise(audio_file)
-                result = self.model.transcribe(audio_file)
-            result = self.model.transcribe(audio_file)
+
+            result = self.model.transcribe(audio_file,language="es")
             transcription = result["text"]
             logging.info(f"Transcription completed: {transcription}")
             return transcription
