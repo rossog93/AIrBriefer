@@ -1,0 +1,12 @@
+numpy
+pyrtlsdr
+pydub
+sounddevice
+openai-whisper
+pyvad
+pyyaml
+transformers
+torch
+pytest
+librosa
+noisereduce
