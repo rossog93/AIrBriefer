@@ -4,8 +4,10 @@ import logging
 import noisereduce as nr
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
+from scipy.signal import welch
 import numpy as np
 from src.utils.logger import logger
+
 import os
 
 class AITranscriber:
@@ -49,83 +51,69 @@ class AITranscriber:
                 reduced=reduced_noise,
                 filtered=filtered_samples,
                 final=final_samples,
-                sample_rate=audio.frame_rate)
+                sample_rate=audio.frame_rate
+            )
 
     def plot_signals(self, original, reduced, filtered, final, sample_rate):
+        import matplotlib.pyplot as plt
+
         def compute_fft(signal):
             freqs = np.fft.rfftfreq(len(signal), d=1 / sample_rate)
             fft_vals = np.abs(np.fft.rfft(signal))
             return freqs, fft_vals
 
-        freqs_orig, fft_orig = compute_fft(original)
-        freqs_red, fft_red = compute_fft(reduced)
-        freqs_fil, fft_fil = compute_fft(filtered)
-        freqs_fin, fft_fin = compute_fft(final)
+        def compute_psd(signal):
+            freqs, psd_vals = welch(signal, fs=sample_rate, nperseg=1024)
+            return freqs, psd_vals
 
-        plt.figure(figsize=(20, 12))
+        signals = [
+            ("Original", original, 'blue'),
+            ("Noise Reduced", reduced, 'orange'),
+            ("Filtered", filtered, 'purple'),
+            ("Normalized", final, 'green'),
+        ]
 
-        # Time domain
-        plt.subplot(2, 4, 1)
-        plt.plot(original)
-        plt.title("Original (Time)")
-        plt.xlabel("Sample Index")
-        plt.ylabel("Amplitude")
-        plt.grid(True)
+        fig, axs = plt.subplots(4, 4, figsize=(24, 14))
+        axs = axs.flatten()
 
-        plt.subplot(2, 4, 2)
-        plt.plot(reduced, color='orange')
-        plt.title("After Noise Reduction (Time)")
-        plt.xlabel("Sample Index")
-        plt.ylabel("Amplitude")
-        plt.grid(True)
+        for i, (label, signal, color) in enumerate(signals):
+            time = np.arange(len(signal)) / sample_rate
 
-        plt.subplot(2, 4, 3)
-        plt.plot(filtered, color='purple')
-        plt.title("After Filtering (Time)")
-        plt.xlabel("Sample Index")
-        plt.ylabel("Amplitude")
-        plt.grid(True)
+            # Time Domain
+            axs[i].plot(time, signal, color=color)
+            axs[i].set_title(f"{label} - Time")
+            axs[i].set_xlabel("Time (s)")
+            axs[i].set_ylabel("Amplitude")
+            axs[i].grid(True)
 
-        plt.subplot(2, 4, 4)
-        plt.plot(final, color='green')
-        plt.title("After Normalization (Time)")
-        plt.xlabel("Sample Index")
-        plt.ylabel("Amplitude")
-        plt.grid(True)
+            # FFT
+            freqs_fft, fft_vals = compute_fft(signal)
+            axs[i + 4].plot(freqs_fft, fft_vals, color=color)
+            axs[i + 4].set_title(f"{label} - FFT")
+            axs[i + 4].set_xlabel("Frequency (Hz)")
+            axs[i + 4].set_ylabel("Magnitude")
+            axs[i + 4].grid(True)
 
-        # Frequency domain
-        plt.subplot(2, 4, 5)
-        plt.plot(freqs_orig, fft_orig)
-        plt.title("Original (FFT)")
-        plt.xlabel("Frequency (Hz)")
-        plt.ylabel("Magnitude")
-        plt.grid(True)
+            # PSD
+            freqs_psd, psd_vals = compute_psd(signal)
+            axs[i + 8].semilogy(freqs_psd, psd_vals, color=color)
+            axs[i + 8].set_title(f"{label} - PSD")
+            axs[i + 8].set_xlabel("Frequency (Hz)")
+            axs[i + 8].set_ylabel("PSD (V²/Hz)")
+            axs[i + 8].grid(True)
 
-        plt.subplot(2, 4, 6)
-        plt.plot(freqs_red, fft_red, color='orange')
-        plt.title("After Noise Reduction (FFT)")
-        plt.xlabel("Frequency (Hz)")
-        plt.ylabel("Magnitude")
-        plt.grid(True)
-
-        plt.subplot(2, 4, 7)
-        plt.plot(freqs_fil, fft_fil, color='purple')
-        plt.title("After Filtering (FFT)")
-        plt.xlabel("Frequency (Hz)")
-        plt.ylabel("Magnitude")
-        plt.grid(True)
-
-        plt.subplot(2, 4, 8)
-        plt.plot(freqs_fin, fft_fin, color='green')
-        plt.title("After Normalization (FFT)")
-        plt.xlabel("Frequency (Hz)")
-        plt.ylabel("Magnitude")
-        plt.grid(True)
+            # Histogram
+            axs[i + 12].hist(signal, bins=100, color=color, alpha=0.7)
+            axs[i + 12].set_title(f"{label} - Amplitude Histogram")
+            axs[i + 12].set_xlabel("Amplitude")
+            axs[i + 12].set_ylabel("Count")
 
         plt.tight_layout()
         os.makedirs("test/plots", exist_ok=True)
-        plt.savefig(os.path.join("test/plots", "data_full_pipeline.png"))
+        plot_file = os.path.join("test/plots", "data_full_pipeline.png")
+        plt.savefig(plot_file)
         plt.close()
+        logger.info(f"Saved plot to {plot_file}")
 
 
     def transcribe(self, audio_file, reduce_noise=False):
