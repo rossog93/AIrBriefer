@@ -28,8 +28,8 @@ class AITranscriber:
             channels=audio.channels)
 
         # Step 2: Filtering (band-pass)
-        logger.info("Applying band-pass filter (300–3400 Hz).")
-        filtered_audio = clean_audio.high_pass_filter(300).low_pass_filter(3400)
+        logger.info("Applying band-pass filter (50–2500 Hz).")
+        filtered_audio = clean_audio.high_pass_filter(50).low_pass_filter(2500)
         filtered_samples = np.array(filtered_audio.get_array_of_samples())
 
         # Step 3: Normalization
@@ -38,8 +38,9 @@ class AITranscriber:
         final_samples = np.array(normalized_audio.get_array_of_samples())
 
         logger.info("Noise reduction, filtering, and normalization completed. Exporting clean audio.")
-        output_path = input_path.split(".ogg")[0] + "_clean.ogg"
-        normalized_audio.export(output_path, format="ogg")
+        format = input_path.split(".")[-1]
+        output_path = input_path.split(".")[0] + f"_clean.{format}"
+        normalized_audio.export(output_path, format=f"{format}")
         logger.info("Clean audio exported successfully.")
 
         if plt:
